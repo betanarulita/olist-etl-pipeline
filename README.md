@@ -41,11 +41,11 @@ olist_etl_pipeline/
 │   ├── raw/                 # Source CSV files
 │   └── processed/           # Processed outputs
 ├── scripts/
-│   ├── extract.py           # Load CSV to DataFrames
-│   ├── explore.py           # Data profiling & EDA
-│   ├── transform.py         # Cleaning, joining, feature engineering
-│   ├── load.py              # Validation + load to SQLite
-│   └── analyze.py           # SQL-based business analysis
+│   ├── extract_01.py        # Load CSV to DataFrames
+│   ├── explore_02.py        # Data profiling & EDA
+│   ├── transform_03.py      # Cleaning, joining, feature engineering
+│   ├── load_04.py           # Validation + load to SQLite
+│   └── analyze_05.py        # SQL-based business analysis
 ├── output/
 │   └── olist.db             # SQLite database
 └── docs/
