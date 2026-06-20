@@ -4,8 +4,8 @@ import os
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__)))
-from extract import extract_data
-from transform import transform_data
+from extract_01 import extract_data
+from transform_03 import transform_data
 
 OUTPUT_PATH = "output/"
 DB_PATH = f"{OUTPUT_PATH}olist.db"

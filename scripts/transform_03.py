@@ -3,7 +3,7 @@ import os
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__)))
-from extract import extract_data
+from extract_01 import extract_data
 
 PROCESSED_PATH = "data/processed/"
 
