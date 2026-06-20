@@ -3,10 +3,10 @@ import os
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from scripts.extract import extract_data
-from scripts.transform import transform_data
-from scripts.load import validate_data, load_data
-from scripts.analyze import analyze
+from scripts.extract_01 import extract_data
+from scripts.transform_03 import transform_data
+from scripts.load_04 import validate_data, load_data
+from scripts.analyze_05 import analyze
 
 if __name__ == "__main__":
     print("STARTING OLIST ETL PIPELINE")
