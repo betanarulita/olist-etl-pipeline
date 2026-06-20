@@ -27,10 +27,10 @@ Sebagai Data Engineer, saya diminta membangun pipeline data untuk menjawab perta
 
 ## Tech Stack
 - Python 3.13
-- Pandas — data transformation & manipulation
-- SQLAlchemy — database connection
-- SQLite — data storage
-- SQL — analysis queries
+- Pandas - data transformation & manipulation
+- SQLAlchemy - database connection
+- SQLite - data storage
+- SQL - analysis queries
 
 ## Project Structure
 ```
@@ -102,7 +102,7 @@ python main.py
 
 ## Data Quality Notes
 - 3 orders tidak memiliki payment record (known data characteristic)
-- 10,225 duplicate order_id + product_id — expected behavior (1 order bisa beli produk sama lebih dari 1)
+- 10,225 duplicate order_id + product_id - expected behavior (1 order bisa beli produk sama lebih dari 1)
 - Missing category names diisi "unknown" untuk mempertahankan data completeness
 
 ## Author
