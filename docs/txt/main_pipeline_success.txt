@@ -1,0 +1,145 @@
+(venv) PS D:\Portofolio DE\olist_etl_pipeline> python main.py
+STARTING OLIST ETL PIPELINE
+==================================================
+=== EXTRACT PHASE ===
+✓ Loaded customers: 99,441 rows x 5 cols
+✓ Loaded orders: 99,441 rows x 8 cols
+✓ Loaded order_items: 112,650 rows x 7 cols
+✓ Loaded payments: 103,886 rows x 5 cols
+✓ Loaded products: 32,951 rows x 9 cols
+✓ Loaded sellers: 3,095 rows x 4 cols
+✓ Loaded category: 71 rows x 2 cols
+==================================================
+=== TRANSFORM PHASE ===
+==================================================
+
+📦 Transforming ORDERS...
+   ✅ Date columns converted to datetime
+   ✅ Added 'is_late' flag
+   ℹ️  Late orders: 7,827 (7.9%)
+
+📦 Transforming PRODUCTS...
+   ✅ NULL categories filled with 'unknown'
+   ✅ Joined with English category translation
+
+📦 Building MASTER TABLE...
+   ✅ Master table built: 113,425 rows x 16 cols
+   ✅ Columns: ['order_id', 'customer_id', 'order_status', 'order_purchase_timestamp', 'order_approved_at', 'order_delivered_carrier_date', 'order_delivered_customer_date', 'order_estimated_delivery_date', 'is_late', 'customer_state', 'product_id', 'price', 'freight_value', 'payment_value', 'payment_type', 'product_category_name_english']
+==================================================
+=== VALIDATION PHASE ===
+==================================================
+
+📊 Row Count Check:
+   orders source      : 99,441
+   master table       : 113,425
+   ✅ Row count makes sense
+
+💰 Revenue Integrity Check:
+   Source payments total : Rp 16,008,872.12
+   Master table total    : Rp 16,008,872.12
+   Difference            : Rp 0.00
+   ✅ Revenue matches!
+
+🔍 Null Check (critical columns):
+   ✅ order_id: no nulls
+   ✅ customer_id: no nulls
+   ✅ order_status: no nulls
+   ⚠️  payment_value: 3 nulls found
+
+🔁 Duplicate Check:
+   ⚠️  10,225 duplicates found on order_id + product_id
+
+✅ ALL VALIDATION PASSED
+
+==================================================
+=== LOAD PHASE ===
+==================================================
+   ✅ Loaded tbl_orders: 99,441 rows
+   ✅ Loaded tbl_products: 32,951 rows
+   ✅ Loaded tbl_master: 113,425 rows
+
+   📁 Database saved: output/olist.db
+
+==================================================
+📊 Revenue by Order Status
+==================================================
+order_status  total_orders  total_revenue  avg_revenue
+   delivered         96478    19776160.44       179.47
+     shipped          1107      197150.14       166.23
+    canceled           625      186964.32       264.82
+ unavailable           609      126671.70       207.66
+  processing           301      100378.37       281.17
+    invoiced           314       82410.89       228.29
+     created             5         688.10       137.62
+    approved             2         302.70       100.90
+
+==================================================
+📊 Late Delivery Impact
+==================================================
+ is_late  total_orders  total_revenue  avg_order_value
+       0         91614    18855052.92           180.07
+       1          7827     1615673.74           185.45
+
+==================================================
+📊 Top 10 Category by Revenue
+==================================================
+             category  total_orders  total_revenue  avg_order_value
+       bed_bath_table          9399     1711258.08           154.21
+        health_beauty          8800     1653730.45           171.71
+computers_accessories          6654     1571543.81           201.97
+      furniture_decor          6425     1424782.52           171.70
+        watches_gifts          5604     1421715.28           238.14
+       sports_leisure          7673     1381363.23           160.81
+           housewares          5847     1086565.32           157.13
+                 auto          3873      843343.61           200.56
+         garden_tools          3505      823517.80           190.28
+           cool_stuff          3617      759735.08           200.99
+
+==================================================
+📊 Cancelled Orders by Category
+==================================================
+             category  cancelled_orders  revenue_lost
+                  NaN               164      37337.87
+       sports_leisure                47      10764.33
+           housewares                37       8192.81
+        health_beauty                36       3642.67
+computers_accessories                35      13786.64
+                 toys                31       5297.12
+      furniture_decor                24       5393.87
+                 auto                24       8950.72
+        watches_gifts                20       7501.40
+       bed_bath_table                18       1295.59
+
+==================================================
+📊 Monthly Revenue Trend
+==================================================
+  month  total_orders  total_revenue
+2016-09             2         272.46
+2016-10           300       70345.83
+2016-12             1          19.62
+2017-01           797      188647.38
+2017-02          1763      346874.93
+2017-03          2649      537210.92
+2017-04          2386      492543.25
+2017-05          3671      723844.25
+2017-06          3229      604917.62
+2017-07          3998      736348.09
+2017-08          4304      868228.56
+2017-09          4265     1019114.31
+2017-10          4605     1024598.38
+2017-11          7507     1586595.54
+2017-12          5662     1053632.97
+2018-01          7235     1409209.62
+2018-02          6655     1302917.66
+2018-03          7185     1476133.54
+2018-04          6924     1493030.27
+2018-05          6849     1501924.46
+2018-06          6149     1295517.05
+2018-07          6251     1326995.03
+2018-08          6428     1224674.14
+2018-09             1         166.46
+
+✅ Analysis complete!
+
+PIPELINE COMPLETED SUCCESSFULLY!
+(venv) PS D:\Portofolio DE\olist_etl_pipeline> 

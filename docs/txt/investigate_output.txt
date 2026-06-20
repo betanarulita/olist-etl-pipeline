@@ -1,0 +1,19 @@
+(venv) PS D:\Portofolio DE\olist_etl_pipeline> python scripts/investigate.py
+
+Order dengan lebih dari 1 payment method:
+3039
+
+Contoh order_id nya:
+order_id
+0016dfedd97fc2950e388d2971d718c7    2
+002f19a65a2ddd70a090297872e6d64e    2
+0071ee2429bc1efdc43aa3e073a5290e    2
+009ac365164f8e06f59d18a08045f6c4    6
+00ac05fe0fc047c54418098eb64e3aaa    2
+00b4a910f64f24dbcac04fe54088a443    2
+00bd50cdd31bd22e9081e6e2d5b3577b    3
+00c405bd71187154a7846862f585a9d4    7
+00c95282163553a982f38481f9488481    4
+00e6bc6b166eb28b4502c1cad4457248    2
+Name: payment_sequential, dtype: int64
+(venv) PS D:\Portofolio DE\olist_etl_pipeline> 

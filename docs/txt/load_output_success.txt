@@ -1,0 +1,60 @@
+(venv) PS D:\Portofolio DE\olist_etl_pipeline> python scripts/load.py       
+=== EXTRACT PHASE ===
+✓ Loaded customers: 99,441 rows x 5 cols
+✓ Loaded orders: 99,441 rows x 8 cols
+✓ Loaded order_items: 112,650 rows x 7 cols
+✓ Loaded payments: 103,886 rows x 5 cols
+✓ Loaded products: 32,951 rows x 9 cols
+✓ Loaded sellers: 3,095 rows x 4 cols
+✓ Loaded category: 71 rows x 2 cols
+==================================================
+=== TRANSFORM PHASE ===
+==================================================
+
+📦 Transforming ORDERS...
+   ✅ Date columns converted to datetime
+   ✅ Added 'is_late' flag
+   ℹ️  Late orders: 7,827 (7.9%)
+
+📦 Transforming PRODUCTS...
+   ✅ NULL categories filled with 'unknown'
+   ✅ Joined with English category translation
+
+📦 Building MASTER TABLE...
+   ✅ Master table built: 113,425 rows x 16 cols
+   ✅ Columns: ['order_id', 'customer_id', 'order_status', 'order_purchase_timestamp', 'order_approved_at', 'order_delivered_carrier_date', 'order_delivered_customer_date', 'order_estimated_delivery_date', 'is_late', 'customer_state', 'product_id', 'price', 'freight_value', 'payment_value', 'payment_type', 'product_category_name_english']
+==================================================
+=== VALIDATION PHASE ===
+==================================================
+
+📊 Row Count Check:
+   orders source      : 99,441
+   master table       : 113,425
+   ✅ Row count makes sense
+
+💰 Revenue Integrity Check:
+   Source payments total : Rp 16,008,872.12
+   Master table total    : Rp 16,008,872.12
+   Difference            : Rp 0.00
+   ✅ Revenue matches!
+
+🔍 Null Check (critical columns):
+   ✅ order_id: no nulls
+   ✅ customer_id: no nulls
+   ✅ order_status: no nulls
+   ⚠️  payment_value: 3 nulls found
+
+🔁 Duplicate Check:
+   ⚠️  10,225 duplicates found on order_id + product_id
+
+✅ ALL VALIDATION PASSED
+
+==================================================
+=== LOAD PHASE ===
+==================================================
+   ✅ Loaded tbl_orders: 99,441 rows
+   ✅ Loaded tbl_products: 32,951 rows
+   ✅ Loaded tbl_master: 113,425 rows
+
+   📁 Database saved: output/olist.db
+(venv) PS D:\Portofolio DE\olist_etl_pipeline> 
