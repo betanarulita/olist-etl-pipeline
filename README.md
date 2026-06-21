@@ -1,111 +1,141 @@
 # Olist E-Commerce ETL Pipeline
 
 ## Business Problem
-Sebagai Data Engineer, saya diminta membangun pipeline data untuk menjawab pertanyaan bisnis:
 
-> **"Di mana titik kebocoran revenue terbesar pada platform e-commerce Olist — apakah dari pembatalan order, keterlambatan pengiriman, atau kategori produk tertentu?"**
+> "Di mana titik kebocoran revenue terbesar pada platform e-commerce Olist — dari pembatalan order, keterlambatan pengiriman, atau kategori produk tertentu?"
 
 ## Pipeline Architecture
+
 ```
-[Raw CSV Files]
+[7 of 9 CSV Files]
       ↓ Extract
 [Python/Pandas]
+      ↓ Explore
+[Data Profiling — missing values, data types]
       ↓ Transform
-[Cleaned & Joined DataFrames]
+[Cleaning, JOIN, Feature Engineering]
       ↓ Validate
-[Data Quality Checks]
+[Revenue Integrity Check, Row Count, Null Check]
       ↓ Load
-[SQLite Database]
+[SQLite Database — 3 tables]
       ↓ Analyze
-[SQL Query Results]
+[SQL Queries — Business Insight]
 ```
 
 ## Dataset
 - Source: [Brazilian E-Commerce Public Dataset by Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
-- 9 CSV files, 99,441 orders, 2016-2018
-- Tables: customers, orders, order_items, payments, products, sellers, category
+- 9 CSV files total, 7 digunakan (reviews & geolocation excluded — tidak relevan untuk analisis revenue)
+- 99,441 orders | 2016–2018
+
+### Tables Used (7 of 9)
+
+| Table | Rows | Key | Note |
+|---|---|---|---|
+| olist_orders | 99,441 | order_id | Base table |
+| olist_customers | 99,441 | customer_id | Customer info |
+| olist_order_items | 112,650 | order_id | Multi-item per order |
+| olist_payments | 103,886 | order_id | Multi-method per order |
+| olist_products | 32,951 | product_id | Product catalog |
+| olist_sellers | 3,095 | seller_id | Seller info |
+| category_name_translation | 71 | category_name | PT→EN translation |
 
 ## Tech Stack
-- Python 3.13
-- Pandas - data transformation & manipulation
-- SQLAlchemy - database connection
-- SQLite - data storage
-- SQL - analysis queries
+
+| Tool | Version | Purpose |
+|---|---|---|
+| Python | 3.13 | Pipeline scripting |
+| Pandas | 3.0 | Data transformation |
+| SQLAlchemy | 2.0 | Database connection (agnostic) |
+| SQLite | 3 | Data storage |
+| SQL | — | Business analysis queries |
 
 ## Project Structure
+
 ```
 olist_etl_pipeline/
 ├── main.py                  # Run full pipeline
 ├── requirements.txt
 ├── data/
-│   ├── raw/                 # Source CSV files
-│   └── processed/           # Processed outputs
+│   ├── raw/                 # Source CSV files (not tracked)
+│   └── processed/
 ├── scripts/
-│   ├── extract_01.py        # Load CSV to DataFrames
-│   ├── explore_02.py        # Data profiling & EDA
-│   ├── transform_03.py      # Cleaning, joining, feature engineering
-│   ├── load_04.py           # Validation + load to SQLite
-│   └── analyze_05.py        # SQL-based business analysis
+│   ├── extract_01.py           # Load CSV to DataFrames
+│   ├── explore_02.py           # Data profiling & EDA
+│   ├── transform_03.py         # Cleaning, joining, feature engineering
+│   ├── load_04.py              # Validation + load to SQLite
+│   └── analyze_05.py           # SQL-based business analysis
 ├── output/
-│   └── olist.db             # SQLite database
+│   └── olist.db             # SQLite database (generated)
 └── docs/
+    ├── decisions.md         # Engineering decision log
     ├── screenshots/         # Pipeline execution screenshots
     └── txt/                 # Pipeline output logs
 ```
 
 ## How to Run
+
 ```bash
 # 1. Clone repo
 git clone https://github.com/betanarulita/olist-etl-pipeline.git
 cd olist-etl-pipeline
 
-# 2. Create virtual environment
-python -m venv venv
-venv\Scripts\activate
+# 2. Download dataset from Kaggle
+# https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce
+# Extract all CSV files to data/raw/
 
-# 3. Install dependencies
+# 3. Create virtual environment
+python -m venv venv
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Mac/Linux
+
+# 4. Install dependencies
 pip install -r requirements.txt
 
-# 4. Run full pipeline
+# 5. Run full pipeline
 python main.py
 ```
 
 ## Key Findings
 
 ### 1. Revenue Leakage from Cancelled Orders
-- 625 orders cancelled dengan payment sudah masuk
+- 625 orders cancelled dengan payment sudah masuk sistem
 - Total revenue at risk: **Rp 186,964**
-- Avg order value cancelled (264) lebih tinggi dari delivered (179)
-- Indikasi: customer premium lebih sering cancel
+- Avg order value cancelled (Rp 264) lebih tinggi dari delivered (Rp 179)
+- Indikasi: customer dengan order bernilai tinggi lebih sering cancel
 
 ### 2. Late Delivery Impact
 - **7,827 orders (7.9%) terlambat** dari estimasi pengiriman
-- Order yang terlambat memiliki avg value lebih tinggi (185 vs 180)
-- Indikasi: produk bernilai tinggi lebih rentan keterlambatan
+- `is_late` flag: 1 = order_delivered_customer_date > order_estimated_delivery_date
+- Avg order value late (Rp 185.45) vs on-time (Rp 180.07) — selisih Rp 5.38
+- Bukan asumsi — dihitung langsung dari tbl_master
 
-### 3. Top Revenue Categories
-| Category | Total Orders | Revenue |
-|---|---|---|
-| bed_bath_table | 9,399 | Rp 1,711,258 |
-| health_beauty | 8,800 | Rp 1,653,730 |
-| computers_accessories | 6,654 | Rp 1,571,544 |
+### 3. Revenue by Category
+- Top category: bed_bath_table → Rp 1,711,258
+- Highest avg order value: watches_gifts → Rp 238 per transaksi
+- **164 cancelled orders dengan `product_category_name_english` = NULL** → Rp 37,337 revenue lost
+- NULL muncul karena LEFT JOIN products → category_translation tidak menemukan pasangan
 
-### 4. Unidentified Cancelled Orders
-- **164 cancelled orders tanpa kategori produk** → Rp 37,337 revenue lost
-- Root cause: produk mungkin sudah dihapus dari katalog
-- Rekomendasi: implementasi soft delete pada katalog produk
+### 4. Revenue Integrity Validation
+```
+Source payments total : Rp 16,008,872.12
+Master table total    : Rp 16,008,872.12
+Difference            : Rp 0.00 ✓
+```
 
-### 5. Revenue Growth Trend
-- Growth dari 300 orders/bulan (Oct 2016) → 7,500 orders/bulan (Nov 2017)
-- Peak November 2017 → kemungkinan Black Friday effect
-- Revenue stabil di Rp 1.2-1.5M/bulan sepanjang 2018
+## Engineering Decisions
+
+Lihat [`docs/decisions.md`](docs/decisions.md) untuk penjelasan lengkap setiap keputusan teknis.
+
+Ringkasan:
+- **Aggregate Before JOIN** — 3,039 orders punya multiple payment methods → aggregate dulu untuk hindari double-count
+- **fillna('unknown') bukan DROP** — 610 NULL di product_category_name → menghapus berisiko kehilangan data penting
+- **Database-Agnostic via SQLAlchemy** — migrasi ke PostgreSQL/BigQuery cukup ganti 1 baris connection string
 
 ## Data Quality Notes
-- 3 orders tidak memiliki payment record (known data characteristic)
-- 10,225 duplicate order_id + product_id - expected behavior (1 order bisa beli produk sama lebih dari 1)
-- Missing category names diisi "unknown" untuk mempertahankan data completeness
+- 3 orders tidak memiliki payment record (known data characteristic dari source)
+- 10,225 duplicate order_id + product_id — expected behavior (1 order bisa beli produk sama lebih dari 1)
 
 ## Author
-**Beta Narulita Aprilia**  
-Data Engineer | Information Systems Graduate  
+**Beta Narulita Aprilia**
+Data Engineer | Information Systems Graduate
 [LinkedIn](https://www.linkedin.com/in/betana/) · [GitHub](https://github.com/betanarulita)
