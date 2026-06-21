@@ -1,76 +1,104 @@
-# Data Engineering Decision Log
+# Engineering Decision Log
 
-## 1. Kenapa SQLite bukan PostgreSQL?
-**Keputusan:** Pakai SQLite sebagai database storage.
-
-**Alasan:**
-- SQLite adalah file tunggal (.db) — mudah di-share dan di-upload ke GitHub
-- Tidak perlu install database server — siapapun bisa langsung clone dan run
-- Cukup untuk dataset skala ini (113K rows)
-- Untuk production environment, arsitektur ini bisa di-migrate ke PostgreSQL/BigQuery dengan mengganti connection string di SQLAlchemy
+Dokumen ini mencatat setiap keputusan teknis yang diambil selama build pipeline, beserta alasan dan hasilnya.
 
 ---
 
-## 2. Kenapa LEFT JOIN bukan INNER JOIN?
+## 1. Aggregate Payments Before JOIN
+
+**Temuan:** 3,039 orders memiliki lebih dari 1 payment method (credit card + voucher, dll).
+
+**Masalah:** Direct JOIN payments ke master table → setiap item di order akan duplikat sebanyak jumlah payment methods → revenue double-count.
+
+**Bukti sebelum fix:**
+```
+Source payments total : Rp 16,008,872.12
+Master table total    : Rp 15,991,002.84
+Difference            : Rp 17,869.28 ← double-count
+```
+
+**Keputusan:** Aggregate payments per order_id dulu sebelum JOIN:
+```python
+payments_agg = (
+    data["payments"]
+    .groupby("order_id")
+    .agg(
+        payment_value=("payment_value", "sum"),
+        payment_type=("payment_type", lambda x: ",".join(x.unique()))
+    )
+    .reset_index()
+)
+```
+
+**Hasil setelah fix:**
+```
+Difference : Rp 0.00 ✓
+```
+
+---
+
+## 2. fillna('unknown') bukan DROP
+
+**Temuan:** 610 produk tidak punya nama kategori (NULL di `product_category_name`).
+
+**Opsi yang dipertimbangkan:**
+- **DROP** — berisiko kehilangan data penting, bias analisis
+- **Imputation** — misleading, seolah kategori diketahui padahal tidak
+- **fillna('unknown')** ✅ — data tetap utuh, temuan tetap valid
+
+**Keputusan:** Tandai sebagai 'unknown' - menghapus berisiko kehilangan data penting, mengisi kategori lain justru misleading.
+
+**Hasil:** 164 cancelled orders tanpa kategori berhasil terdeteksi → Rp 37,337 revenue lost yang tidak akan terlihat kalau data langsung dihapus.
+
+---
+
+## 3. LEFT JOIN bukan INNER JOIN
+
 **Keputusan:** Semua JOIN di master table menggunakan `how="left"`.
 
-**Alasan:**
-- INNER JOIN akan drop rows yang tidak match di kedua table
-- Contoh: order yang tidak punya payment record → hilang dari analisis
-- LEFT JOIN mempertahankan semua orders sebagai base — rows yang tidak match akan NULL
-- Lebih aman untuk analisis bisnis karena tidak ada data yang hilang secara diam-diam
+**Alasan:** INNER JOIN akan drop rows yang tidak match di kedua table - misalnya order yang tidak punya payment record akan hilang dari analisis secara diam-diam. LEFT JOIN mempertahankan semua orders sebagai base, rows yang tidak match akan NULL dan masih bisa diinvestigasi.
+
+**Prinsip:** Jangan biarkan data hilang secara diam-diam - lebih baik NULL yang terlihat daripada data yang hilang tanpa jejak.
 
 ---
 
-## 3. Kenapa payments di-aggregate sebelum JOIN?
-**Keputusan:** `payments` di-groupby `order_id` dulu sebelum di-JOIN ke master table.
+## 4. Database-Agnostic via SQLAlchemy
 
-**Alasan:**
-- 1 order bisa bayar pakai multiple payment methods (credit card + voucher)
-- Kalau langsung JOIN → setiap item di order akan duplikat sebanyak jumlah payment methods
-- Investigasi menemukan 3,039 orders punya lebih dari 1 payment method
-- Solusi: aggregate dulu → `payment_value` di-sum, `payment_type` di-concat
+**Keputusan:** Pakai SQLAlchemy sebagai abstraction layer untuk koneksi database.
 
-**Validasi:** Revenue sebelum fix = Rp 15,991,002 vs source Rp 16,008,872 (selisih Rp 17,869). Setelah fix = Rp 0 difference ✅
+**Tiga opsi database yang bisa dipakai:**
+- **SQLite** ✅ — digunakan di project ini, portable, tidak perlu server
+- **PostgreSQL** — cocok untuk production, multi-user
+- **BigQuery** — cocok untuk skala enterprise
 
----
+**Kenapa SQLAlchemy:** Migrasi antar database hanya perlu ganti 1 baris connection string - logic pipeline tidak berubah sama sekali:
+```python
+# SQLite (sekarang)
+engine = create_engine("sqlite:///output/olist.db")
 
-## 4. Kenapa `product_category_name` NULL diisi "unknown"?
-**Keputusan:** NULL category diisi string "unknown", bukan di-drop.
-
-**Alasan:**
-- 610 products (1.9%) tidak punya category name
-- Kalau di-drop → 610 produk hilang dari analisis revenue per kategori
-- Dengan "unknown", produk tetap ikut analisis dan justru teridentifikasi sebagai temuan:
-  → 164 cancelled orders tanpa kategori = Rp 37,337 revenue lost
-- Prinsip: jangan drop data yang tidak kamu pahami — flag dulu, investigasi kemudian
+# PostgreSQL (production)
+engine = create_engine("postgresql://user:password@localhost:5432/olist_db")
+```
 
 ---
 
-## 5. Kenapa kolom dimensi produk tidak difix?
-**Keputusan:** `product_weight_g`, `product_length_cm`, dst dibiarkan NULL.
+## 5. Exclude olist_order_reviews & olist_geolocation
 
-**Alasan:**
-- Fokus analisis adalah revenue leakage — bukan shipping cost calculation
-- Kolom dimensi tidak masuk ke master table dan tidak dipakai di SQL analysis
-- Prinsip: hanya fix kolom yang relevan dengan pertanyaan bisnis
+**Keputusan:** 2 dari 9 CSV files tidak diload ke pipeline.
 
----
+| File | Alasan exclude |
+|---|---|
+| olist_order_reviews | Data rating/komentar - tidak relevan untuk analisis revenue |
+| olist_geolocation | Data koordinat lokasi - tidak masuk ke business question |
 
-## 6. Kenapa kolom tanggal dikonversi ke datetime?
-**Keputusan:** Semua kolom tanggal di orders dikonversi dari string ke datetime.
-
-**Alasan:**
-- Data asli menyimpan tanggal sebagai string (object) — tidak bisa dihitung
-- Untuk bisa hitung keterlambatan: `delivered_date - estimated_date` → butuh datetime
-- `errors="coerce"` dipakai supaya nilai yang tidak valid jadi NaT, bukan error
+**Prinsip:** Hanya load data yang relevan dengan business question - pipeline yang efisien tidak memproses data yang tidak dibutuhkan.
 
 ---
 
-## 7. Kenapa pakai `is_late` flag (0/1) bukan boolean?
-**Keputusan:** Kolom keterlambatan disimpan sebagai integer (0/1), bukan True/False.
+## 6. NaN di product_category_name_english
 
-**Alasan:**
-- Integer lebih mudah di-aggregate di SQL: `SUM(is_late)` langsung kasih total late orders
-- Boolean di SQLite tidak native — disimpan sebagai 0/1 anyway
-- Konsisten dengan konvensi data warehouse (flag columns sebagai integer)
+**Penjelasan:** Setelah LEFT JOIN products ke category_name_translation, beberapa produk menghasilkan NULL di kolom `product_category_name_english`.
+
+**Root cause:** 610 produk tidak memiliki terjemahan kategori di table category_translation - kemungkinan produk baru yang belum terdaftar atau kategori yang tidak ter-cover di translation table.
+
+**Dampak yang terdeteksi:** 164 cancelled orders masuk ke grup NaN ini dengan Rp 37,337 revenue lost - ini yang menjadi data quality finding di analisis.
