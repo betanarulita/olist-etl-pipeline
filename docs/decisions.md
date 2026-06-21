@@ -46,7 +46,11 @@ Difference : Rp 0.00 ✓
 - **Imputation** — misleading, seolah kategori diketahui padahal tidak
 - **fillna('unknown')** ✅ — data tetap utuh, temuan tetap valid
 
+<<<<<<< Updated upstream
 **Keputusan:** Tandai sebagai 'unknown' - menghapus berisiko kehilangan data penting, mengisi kategori lain justru misleading.
+=======
+**Keputusan:** Tandai sebagai 'unknown' — menghapus berisiko kehilangan data penting, mengisi kategori lain justru misleading.
+>>>>>>> Stashed changes
 
 **Hasil:** 164 cancelled orders tanpa kategori berhasil terdeteksi → Rp 37,337 revenue lost yang tidak akan terlihat kalau data langsung dihapus.
 
@@ -56,9 +60,15 @@ Difference : Rp 0.00 ✓
 
 **Keputusan:** Semua JOIN di master table menggunakan `how="left"`.
 
+<<<<<<< Updated upstream
 **Alasan:** INNER JOIN akan drop rows yang tidak match di kedua table - misalnya order yang tidak punya payment record akan hilang dari analisis secara diam-diam. LEFT JOIN mempertahankan semua orders sebagai base, rows yang tidak match akan NULL dan masih bisa diinvestigasi.
 
 **Prinsip:** Jangan biarkan data hilang secara diam-diam - lebih baik NULL yang terlihat daripada data yang hilang tanpa jejak.
+=======
+**Alasan:** INNER JOIN akan drop rows yang tidak match di kedua table — misalnya order yang tidak punya payment record akan hilang dari analisis secara diam-diam. LEFT JOIN mempertahankan semua orders sebagai base, rows yang tidak match akan NULL dan masih bisa diinvestigasi.
+
+**Prinsip:** Jangan biarkan data hilang secara diam-diam — lebih baik NULL yang terlihat daripada data yang hilang tanpa jejak.
+>>>>>>> Stashed changes
 
 ---
 
@@ -71,7 +81,11 @@ Difference : Rp 0.00 ✓
 - **PostgreSQL** — cocok untuk production, multi-user
 - **BigQuery** — cocok untuk skala enterprise
 
+<<<<<<< Updated upstream
 **Kenapa SQLAlchemy:** Migrasi antar database hanya perlu ganti 1 baris connection string - logic pipeline tidak berubah sama sekali:
+=======
+**Kenapa SQLAlchemy:** Migrasi antar database hanya perlu ganti 1 baris connection string — logic pipeline tidak berubah sama sekali:
+>>>>>>> Stashed changes
 ```python
 # SQLite (sekarang)
 engine = create_engine("sqlite:///output/olist.db")
@@ -88,10 +102,17 @@ engine = create_engine("postgresql://user:password@localhost:5432/olist_db")
 
 | File | Alasan exclude |
 |---|---|
+<<<<<<< Updated upstream
 | olist_order_reviews | Data rating/komentar - tidak relevan untuk analisis revenue |
 | olist_geolocation | Data koordinat lokasi - tidak masuk ke business question |
 
 **Prinsip:** Hanya load data yang relevan dengan business question - pipeline yang efisien tidak memproses data yang tidak dibutuhkan.
+=======
+| olist_order_reviews | Data rating/komentar — tidak relevan untuk analisis revenue |
+| olist_geolocation | Data koordinat lokasi — tidak masuk ke business question |
+
+**Prinsip:** Hanya load data yang relevan dengan business question — pipeline yang efisien tidak memproses data yang tidak dibutuhkan.
+>>>>>>> Stashed changes
 
 ---
 
@@ -99,6 +120,12 @@ engine = create_engine("postgresql://user:password@localhost:5432/olist_db")
 
 **Penjelasan:** Setelah LEFT JOIN products ke category_name_translation, beberapa produk menghasilkan NULL di kolom `product_category_name_english`.
 
+<<<<<<< Updated upstream
 **Root cause:** 610 produk tidak memiliki terjemahan kategori di table category_translation - kemungkinan produk baru yang belum terdaftar atau kategori yang tidak ter-cover di translation table.
 
 **Dampak yang terdeteksi:** 164 cancelled orders masuk ke grup NaN ini dengan Rp 37,337 revenue lost - ini yang menjadi data quality finding di analisis.
+=======
+**Root cause:** 610 produk tidak memiliki terjemahan kategori di table category_translation — kemungkinan produk baru yang belum terdaftar atau kategori yang tidak ter-cover di translation table.
+
+**Dampak yang terdeteksi:** 164 cancelled orders masuk ke grup NaN ini dengan Rp 37,337 revenue lost — ini yang menjadi data quality finding di analisis.
+>>>>>>> Stashed changes
